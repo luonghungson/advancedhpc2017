@@ -101,6 +101,26 @@ void Labwork::labwork1_CPU() {
 }
 
 void Labwork::labwork1_OpenMP() {
+    int pixelCount = inputImage->width * inputImage->height;
+    outputImage = static_cast<char *>(malloc(pixelCount * 3));
+    #pragma omp parallel for schedule(dynamic)   
+    for (int j = 0; j < 100; j++) {             // let's do it 100 times, otherwise it's too fast!
+        for (int i = 0; i < pixelCount; i++) {
+            outputImage[i * 3] = (char) (((int) inputImage->buffer[i * 3] + (int) inputImage->buffer[i * 3 + 1] +
+                                          (int) inputImage->buffer[i * 3 + 2]) / 3);
+            outputImage[i * 3 + 1] = outputImage[i * 3];
+            outputImage[i * 3 + 2] = outputImage[i * 3];
+        }
+    }
+
+}
+
+__global__ void RGBtoGrey(char *inputImage, char *outputImage){
+   int i = threadIdx.x + blockIdx.x * blockDim.x;
+                outputImage[i * 3] = (char) (((int) inputImage[i * 3] + (int) inputImage[i * 3 + 1] +
+                                          (int) inputImage[i * 3 + 2]) / 3);
+                outputImage[i * 3 + 1] = outputImage[i * 3];
+                outputImage[i * 3 + 2] = outputImage[i * 3];
 
 }
 
@@ -153,11 +173,28 @@ void Labwork::labwork2_GPU() {
 }    
 
 void Labwork::labwork3_GPU() {
-   
+    int pixelCount = inputImage->width * inputImage->height;
+    char *inputImage_d;
+    char *outputImage_d;
+    outputImage=(char *)malloc(pixelCount * 3);// void *
+    cudaMalloc(&inputImage_d, pixelCount *3);
+    cudaMalloc(&outputImage_d, pixelCount *3);
+
+    cudaMemcpy(inputImage_d, inputImage->buffer, pixelCount*3, cudaMemcpyHostToDevice);
+
+    int blockSize = 64;
+    int numBlock = pixelCount / blockSize;
+    RGBtoGrey<<<numBlock, blockSize>>>(inputImage_d, outputImage_d);
+    
+    cudaMemcpy(outputImage, outputImage_d, pixelCount*3, cudaMemcpyDeviceToHost);
+    cudaFree(inputImage_d);
+    cudaFree(outputImage_d);
+
 }
 
 void Labwork::labwork4_GPU() {
    
+
 }
 
 void Labwork::labwork5_GPU() {
